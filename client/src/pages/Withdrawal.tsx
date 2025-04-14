@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,14 +27,49 @@ interface WithdrawalTransaction {
   description: string;
 }
 
+// 受取方法タイプ
+type PaymentMethod = "bankTransfer" | "amazonGift" | "paypay";
+
+// Zodスキーマの定義
 const withdrawFormSchema = z.object({
   amount: z.string()
     .min(1, { message: "金額は必須です" })
     .refine(val => !isNaN(parseFloat(val)), { message: "数値を入力してください" })
     .refine(val => parseFloat(val) > 0, { message: "0より大きい金額を入力してください" }),
-  bankName: z.string().min(1, { message: "銀行名は必須です" }),
-  accountNumber: z.string().min(1, { message: "口座番号は必須です" }),
-});
+  paymentMethod: z.enum(["bankTransfer", "amazonGift", "paypay"], {
+    required_error: "受取方法を選択してください",
+  }),
+  // 銀行振込に必要な項目
+  bankName: z.string().optional(),
+  accountNumber: z.string().optional(),
+  // Amazon Giftに必要な項目
+  email: z.string().email({ message: "有効なメールアドレスを入力してください" }).optional(),
+  // PayPayは外部URLに遷移するため、追加項目なし
+})
+.refine(
+  (data) => {
+    if (data.paymentMethod === "bankTransfer") {
+      return !!data.bankName && !!data.accountNumber;
+    }
+    return true;
+  },
+  {
+    message: "銀行名と口座番号は必須です",
+    path: ["bankName"],
+  }
+)
+.refine(
+  (data) => {
+    if (data.paymentMethod === "amazonGift") {
+      return !!data.email;
+    }
+    return true;
+  },
+  {
+    message: "メールアドレスは必須です",
+    path: ["email"],
+  }
+);
 
 const Withdrawal = () => {
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
@@ -43,21 +79,39 @@ const Withdrawal = () => {
     resolver: zodResolver(withdrawFormSchema),
     defaultValues: {
       amount: "",
+      paymentMethod: "bankTransfer",
       bankName: "",
       accountNumber: "",
+      email: "",
     },
   });
+  
+  // 選択された支払い方法を監視
+  const watchPaymentMethod = form.watch("paymentMethod") as PaymentMethod;
   
   const { data: balanceData, isLoading } = useQuery<BalanceData>({
     queryKey: ['/api/wallet/balance'],
   });
   
   const onSubmit = (values: z.infer<typeof withdrawFormSchema>) => {
-    // Handle withdrawal submission
+    // 受取方法によって処理を分岐
+    if (values.paymentMethod === "paypay") {
+      // PayPayの場合は外部URLに遷移する
+      window.open("https://paypay.ne.jp/", "_blank");
+    }
+    
+    // 通知メッセージの表示
+    const methodText = {
+      bankTransfer: "銀行振込",
+      amazonGift: "Amazon Giftカード",
+      paypay: "PayPay"
+    }[values.paymentMethod];
+    
     toast({
       title: "引き出しリクエストが送信されました",
-      description: `${parseFloat(values.amount).toLocaleString()}円の引き出しリクエストを受け付けました。`,
+      description: `${parseFloat(values.amount).toLocaleString()}円の${methodText}への引き出しリクエストを受け付けました。`,
     });
+    
     setIsWithdrawDialogOpen(false);
     form.reset();
   };
@@ -121,7 +175,7 @@ const Withdrawal = () => {
                 ¥{balanceInfo.availableBalance.toLocaleString()}
               </div>
               <div className="mt-1 text-sm text-neutral-500">
-                ご希望の金額を銀行口座に振り込むことができます
+                ご希望の金額を受取手段を選択して引き出しできます
               </div>
             </div>
             
@@ -188,12 +242,13 @@ const Withdrawal = () => {
       
       {/* Withdrawal Dialog */}
       <Dialog open={isWithdrawDialogOpen} onOpenChange={setIsWithdrawDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>残高を引き出す</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* 金額入力 */}
               <FormField
                 control={form.control}
                 name="amount"
@@ -217,33 +272,127 @@ const Withdrawal = () => {
                 )}
               />
               
+              {/* 受取方法の選択 */}
               <FormField
                 control={form.control}
-                name="bankName"
+                name="paymentMethod"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>銀行名</FormLabel>
+                  <FormItem className="space-y-3">
+                    <FormLabel>受取方法</FormLabel>
                     <FormControl>
-                      <Input placeholder="〇〇銀行" {...field} />
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-col space-y-1"
+                      >
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="bankTransfer" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            <div className="flex items-center">
+                              <i className="fas fa-university mr-2"></i>
+                              銀行振込
+                            </div>
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="amazonGift" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            <div className="flex items-center">
+                              <i className="fab fa-amazon mr-2"></i>
+                              Amazon Giftカード
+                            </div>
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="paypay" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            <div className="flex items-center">
+                              <i className="fas fa-mobile-alt mr-2"></i>
+                              PayPay
+                            </div>
+                          </FormLabel>
+                        </FormItem>
+                      </RadioGroup>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               
-              <FormField
-                control={form.control}
-                name="accountNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>口座番号</FormLabel>
-                    <FormControl>
-                      <Input placeholder="1234567" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* 銀行振込用フィールド */}
+              {watchPaymentMethod === "bankTransfer" && (
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="bankName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>銀行名</FormLabel>
+                        <FormControl>
+                          <Input placeholder="〇〇銀行" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="accountNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>口座番号</FormLabel>
+                        <FormControl>
+                          <Input placeholder="1234567" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              
+              {/* Amazon Gift用フィールド */}
+              {watchPaymentMethod === "amazonGift" && (
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>メールアドレス</FormLabel>
+                      <FormDescription>
+                        Amazonギフトカードのコードを送信します
+                      </FormDescription>
+                      <FormControl>
+                        <Input type="email" placeholder="your-email@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              {/* PayPay用説明 */}
+              {watchPaymentMethod === "paypay" && (
+                <div className="rounded-md bg-blue-50 p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <i className="fas fa-info-circle text-blue-500"></i>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-blue-700">
+                        送信後にPayPayアプリが起動します。アプリ内での操作で引き出しが完了します。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsWithdrawDialogOpen(false)}>
