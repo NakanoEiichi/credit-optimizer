@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
 
 // ログインフォームのスキーマ
 const loginFormSchema = z.object({
@@ -16,17 +17,39 @@ const loginFormSchema = z.object({
 });
 
 // 二段階認証のスキーマ
-const twoFactorSchema = z.object({
+const verificationSchema = z.object({
   verificationCode: z.string().min(6, { message: "6桁の認証コードを入力してください" }).max(6),
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
-type TwoFactorFormValues = z.infer<typeof twoFactorSchema>;
+type VerificationFormValues = z.infer<typeof verificationSchema>;
 
 export default function LoginPage() {
-  const [location, setLocation] = useState<string>();
-  const [isTwoFactorStep, setIsTwoFactorStep] = useState(false);
-  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { 
+    isAuthenticated, 
+    isVerifyingLogin,
+    pendingUsername,
+    login, 
+    verifyLogin,
+    resetAuthState
+  } = useAuth();
+
+  // 認証済みの場合はホームページにリダイレクト
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/");
+    }
+  }, [isAuthenticated, setLocation]);
+
+  // ページを離れる際に認証状態をリセット
+  useEffect(() => {
+    return () => {
+      if (isVerifyingLogin) {
+        resetAuthState();
+      }
+    };
+  }, [isVerifyingLogin, resetAuthState]);
 
   // ログインフォーム
   const loginForm = useForm<LoginFormValues>({
@@ -38,63 +61,41 @@ export default function LoginPage() {
   });
 
   // 二段階認証フォーム
-  const twoFactorForm = useForm<TwoFactorFormValues>({
-    resolver: zodResolver(twoFactorSchema),
+  const verificationForm = useForm<VerificationFormValues>({
+    resolver: zodResolver(verificationSchema),
     defaultValues: {
       verificationCode: "",
     },
   });
 
-  // ログイン処理
+  // ログイン処理（第1段階）
   const onLoginSubmit = async (values: LoginFormValues) => {
-    try {
-      // 実際にはAPIリクエストで認証します
-      // ダミーの認証処理を実装
-      console.log("Logging in with:", values);
-      
-      // 認証成功の場合、二段階認証ステップへ移動
-      toast({
-        title: "認証コードをメールで送信しました",
-        description: "メールに記載された6桁のコードを入力してください",
-      });
-      
-      setIsTwoFactorStep(true);
-    } catch (error) {
-      toast({
-        title: "ログインに失敗しました",
-        description: "ユーザー名またはパスワードが間違っています",
-        variant: "destructive",
-      });
-    }
+    await login(values);
   };
 
   // 二段階認証処理
-  const onTwoFactorSubmit = async (values: TwoFactorFormValues) => {
-    try {
-      // 実際にはAPIリクエストで認証コードを検証します
-      console.log("Verifying code:", values);
-      
-      // 認証成功の場合、ダッシュボードへリダイレクト
-      toast({
-        title: "認証成功",
-        description: "ログインに成功しました",
-      });
-      
-      // ダッシュボードへ移動
-      window.location.href = "/";
-    } catch (error) {
-      toast({
-        title: "認証に失敗しました",
-        description: "認証コードが間違っています",
-        variant: "destructive",
-      });
-    }
+  const onVerificationSubmit = async (values: VerificationFormValues) => {
+    if (!pendingUsername) return;
+    
+    await verifyLogin({
+      username: pendingUsername,
+      verificationCode: values.verificationCode,
+    });
   };
+
+  // ローディング状態
+  if (loginForm.formState.isSubmitting || verificationForm.formState.isSubmitting) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-6">
-        {!isTwoFactorStep ? (
+        {!isVerifyingLogin ? (
           // ログインフォーム
           <Card>
             <CardHeader className="space-y-1">
@@ -132,13 +133,24 @@ export default function LoginPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full">ログイン</Button>
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={loginForm.formState.isSubmitting}
+                  >
+                    {loginForm.formState.isSubmitting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    ログイン
+                  </Button>
                 </form>
               </Form>
               <div className="mt-4 text-center text-sm">
-                <a href="/auth/signup" className="text-primary hover:underline">
-                  アカウントをお持ちでない方はこちら
-                </a>
+                <Link href="/auth/signup">
+                  <span className="text-primary hover:underline cursor-pointer">
+                    アカウントをお持ちでない方はこちら
+                  </span>
+                </Link>
               </div>
             </CardContent>
           </Card>
@@ -152,10 +164,10 @@ export default function LoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Form {...twoFactorForm}>
-                <form onSubmit={twoFactorForm.handleSubmit(onTwoFactorSubmit)} className="space-y-4">
+              <Form {...verificationForm}>
+                <form onSubmit={verificationForm.handleSubmit(onVerificationSubmit)} className="space-y-4">
                   <FormField
-                    control={twoFactorForm.control}
+                    control={verificationForm.control}
                     name="verificationCode"
                     render={({ field }) => (
                       <FormItem>
@@ -167,12 +179,21 @@ export default function LoginPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full">認証する</Button>
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={verificationForm.formState.isSubmitting}
+                  >
+                    {verificationForm.formState.isSubmitting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    認証する
+                  </Button>
                   <Button 
                     type="button" 
                     variant="outline" 
                     className="w-full"
-                    onClick={() => setIsTwoFactorStep(false)}
+                    onClick={resetAuthState}
                   >
                     戻る
                   </Button>

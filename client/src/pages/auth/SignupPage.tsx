@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
 
 // サインアップフォームのスキーマ
 const signupFormSchema = z.object({
@@ -30,8 +31,32 @@ type VerificationFormValues = z.infer<typeof verificationSchema>;
 
 export default function SignupPage() {
   const [, setLocation] = useLocation();
-  const [isVerificationStep, setIsVerificationStep] = useState(false);
-  const { toast } = useToast();
+  const { 
+    isAuthenticated, 
+    isVerifyingRegister,
+    pendingUsername,
+    pendingEmail,
+    pendingPassword,
+    sendVerification,
+    register,
+    resetAuthState
+  } = useAuth();
+
+  // 認証済みの場合はホームページにリダイレクト
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/");
+    }
+  }, [isAuthenticated, setLocation]);
+
+  // ページを離れる際に認証状態をリセット
+  useEffect(() => {
+    return () => {
+      if (isVerifyingRegister) {
+        resetAuthState();
+      }
+    };
+  }, [isVerifyingRegister, resetAuthState]);
 
   // サインアップフォーム
   const signupForm = useForm<SignupFormValues>({
@@ -52,55 +77,40 @@ export default function SignupPage() {
     },
   });
 
-  // サインアップ処理
+  // サインアップ処理（第1段階: 認証コード送信）
   const onSignupSubmit = async (values: SignupFormValues) => {
-    try {
-      // 実際にはAPIリクエストでユーザー登録します
-      console.log("Signing up with:", values);
-      
-      // 登録成功の場合、認証コード確認ステップへ移動
-      toast({
-        title: "認証コードをメールで送信しました",
-        description: `${values.email}に6桁の認証コードを送信しました。確認してください。`,
-      });
-      
-      setIsVerificationStep(true);
-    } catch (error) {
-      toast({
-        title: "登録に失敗しました",
-        description: "ユーザー名またはメールアドレスが既に使用されています",
-        variant: "destructive",
-      });
-    }
+    await sendVerification({
+      username: values.username,
+      email: values.email,
+      password: values.password,
+    });
   };
 
   // 認証コード確認処理
   const onVerificationSubmit = async (values: VerificationFormValues) => {
-    try {
-      // 実際にはAPIリクエストで認証コードを検証します
-      console.log("Verifying code:", values);
-      
-      // 検証成功の場合、ログインページへリダイレクト
-      toast({
-        title: "登録完了",
-        description: "アカウントの登録が完了しました。ログインしてください。",
-      });
-      
-      // ログインページへ移動
-      setLocation("/auth/login");
-    } catch (error) {
-      toast({
-        title: "認証に失敗しました",
-        description: "認証コードが間違っています",
-        variant: "destructive",
-      });
-    }
+    if (!pendingUsername || !pendingEmail || !pendingPassword) return;
+    
+    await register({
+      username: pendingUsername,
+      email: pendingEmail,
+      password: pendingPassword,
+      verificationCode: values.verificationCode,
+    });
   };
+
+  // ローディング状態
+  if (signupForm.formState.isSubmitting || verificationForm.formState.isSubmitting) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-6">
-        {!isVerificationStep ? (
+        {!isVerifyingRegister ? (
           // サインアップフォーム
           <Card>
             <CardHeader className="space-y-1">
@@ -164,13 +174,24 @@ export default function SignupPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full">登録する</Button>
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={signupForm.formState.isSubmitting}
+                  >
+                    {signupForm.formState.isSubmitting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    登録する
+                  </Button>
                 </form>
               </Form>
               <div className="mt-4 text-center text-sm">
-                <a href="/auth/login" className="text-primary hover:underline">
-                  すでにアカウントをお持ちの方はこちら
-                </a>
+                <Link href="/auth/login">
+                  <span className="text-primary hover:underline cursor-pointer">
+                    すでにアカウントをお持ちの方はこちら
+                  </span>
+                </Link>
               </div>
             </CardContent>
           </Card>
@@ -199,12 +220,21 @@ export default function SignupPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full">認証する</Button>
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={verificationForm.formState.isSubmitting}
+                  >
+                    {verificationForm.formState.isSubmitting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    認証する
+                  </Button>
                   <Button 
                     type="button" 
                     variant="outline" 
                     className="w-full"
-                    onClick={() => setIsVerificationStep(false)}
+                    onClick={resetAuthState}
                   >
                     戻る
                   </Button>
