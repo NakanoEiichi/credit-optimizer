@@ -1,7 +1,17 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { LogOut, User, Bell } from "lucide-react";
 
 const Navbar = () => {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
 
   // wouter のLinkコンポーネントで正しく使用するための関数
   const NavLink = ({ href, label }: { href: string; label: string }) => {
@@ -20,6 +30,10 @@ const Navbar = () => {
     );
   };
 
+  const handleLogout = () => {
+    logout();
+  };
+
   return (
     <nav className="bg-white border-b border-gray-200 fixed w-full z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -34,26 +48,46 @@ const Navbar = () => {
               <NavLink href="/shop" label="ショップ" />
               <NavLink href="/wallet" label="ウォレット" />
               <NavLink href="/withdrawal" label="出金" />
+              <NavLink href="/extension" label="拡張機能" />
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <button type="button" className="bg-white p-1 rounded-full text-neutral-400 hover:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+            <button 
+              type="button" 
+              className="bg-white p-1 rounded-full text-neutral-400 hover:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
               <span className="sr-only">通知を見る</span>
-              <i className="fas fa-bell"></i>
+              <Bell className="h-5 w-5" />
             </button>
 
-            {/* Profile dropdown */}
+            {/* ユーザーメニュー */}
             <div className="ml-3 relative">
-              <div>
-                <Link href="/auth/login">
-                  <button type="button" className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" id="user-menu-button">
-                    <span className="sr-only">メニューを開く</span>
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                     <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                      <i className="fas fa-user text-primary-600"></i>
+                      <User className="h-5 w-5 text-primary-600" />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>ログアウト</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link href="/auth/login">
+                  <button 
+                    type="button" 
+                    className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                  >
+                    <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary-600" />
                     </div>
                   </button>
                 </Link>
-              </div>
+              )}
             </div>
           </div>
           <div className="-mr-2 flex items-center sm:hidden">

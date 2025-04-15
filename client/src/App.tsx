@@ -7,49 +7,71 @@ import Home from "@/pages/Home";
 import Shop from "@/pages/Shop";
 import Wallet from "@/pages/Wallet";
 import Withdrawal from "@/pages/Withdrawal";
+import Extension from "@/pages/Extension";
 import LoginPage from "@/pages/auth/LoginPage";
 import SignupPage from "@/pages/auth/SignupPage";
 import Navbar from "@/components/layout/Navbar";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 
-function AuthWrapper({ children }: { children: React.ReactNode }) {
-  // 実際のアプリでは、ここでログイン状態を確認する
-  // 仮のログイン状態チェック
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // デモ用にtrueにしておく
+// 認証が必要なルートを保護するためのコンポーネント
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
 
-  // ログイン状態の確認
+  // 認証されていない場合はログインページへリダイレクト
   useEffect(() => {
-    // APIリクエストでログイン状態を確認するコードをここに実装
-    // 今回はデモのためスキップ
-  }, []);
+    if (!isAuthenticated) {
+      setLocation("/auth/login");
+    }
+  }, [isAuthenticated, setLocation]);
 
-  // ログインが必要なページ向けの処理
-  // 実際のアプリではログイン状態に応じてリダイレクトするロジックを実装
-  
-  return <>{children}</>;
+  // 認証されている場合のみ表示
+  return isAuthenticated ? <>{children}</> : null;
 }
 
 function Router() {
   const [location] = useLocation();
   const isAuthRoute = location.startsWith("/auth");
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-neutral-800">
       {!isAuthRoute && <Navbar />}
       <main className={`flex-1 ${!isAuthRoute ? "pt-16" : ""}`}>
         <div className={`mx-auto ${!isAuthRoute ? "max-w-7xl py-6 sm:px-6 lg:px-8" : ""}`}>
-          <AuthWrapper>
-            <Switch>
-              <Route path="/" component={Home} />
-              <Route path="/shop" component={Shop} />
-              <Route path="/wallet" component={Wallet} />
-              <Route path="/withdrawal" component={Withdrawal} />
-              <Route path="/auth/login" component={LoginPage} />
-              <Route path="/auth/signup" component={SignupPage} />
-              <Route component={NotFound} />
-            </Switch>
-          </AuthWrapper>
+          <Switch>
+            <Route path="/auth/login" component={LoginPage} />
+            <Route path="/auth/signup" component={SignupPage} />
+            <Route path="/">
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/shop">
+              <ProtectedRoute>
+                <Shop />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/wallet">
+              <ProtectedRoute>
+                <Wallet />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/withdrawal">
+              <ProtectedRoute>
+                <Withdrawal />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/extension">
+              <ProtectedRoute>
+                <Extension />
+              </ProtectedRoute>
+            </Route>
+            <Route>
+              <NotFound />
+            </Route>
+          </Switch>
         </div>
       </main>
     </div>
@@ -59,8 +81,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
