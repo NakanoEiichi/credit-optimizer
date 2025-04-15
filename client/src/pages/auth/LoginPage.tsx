@@ -16,24 +16,11 @@ const loginFormSchema = z.object({
   password: z.string().min(1, { message: "パスワードを入力してください" }),
 });
 
-// 二段階認証のスキーマ
-const verificationSchema = z.object({
-  verificationCode: z.string().min(6, { message: "6桁の認証コードを入力してください" }).max(6),
-});
-
 type LoginFormValues = z.infer<typeof loginFormSchema>;
-type VerificationFormValues = z.infer<typeof verificationSchema>;
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
-  const { 
-    isAuthenticated, 
-    isVerifyingLogin,
-    pendingUsername,
-    login, 
-    verifyLogin,
-    resetAuthState
-  } = useAuth();
+  const { isAuthenticated, isLoading, login } = useAuth();
 
   // 認証済みの場合はホームページにリダイレクト
   useEffect(() => {
@@ -41,15 +28,6 @@ export default function LoginPage() {
       setLocation("/");
     }
   }, [isAuthenticated, setLocation]);
-
-  // ページを離れる際に認証状態をリセット
-  useEffect(() => {
-    return () => {
-      if (isVerifyingLogin) {
-        resetAuthState();
-      }
-    };
-  }, [isVerifyingLogin, resetAuthState]);
 
   // ログインフォーム
   const loginForm = useForm<LoginFormValues>({
@@ -60,31 +38,13 @@ export default function LoginPage() {
     },
   });
 
-  // 二段階認証フォーム
-  const verificationForm = useForm<VerificationFormValues>({
-    resolver: zodResolver(verificationSchema),
-    defaultValues: {
-      verificationCode: "",
-    },
-  });
-
-  // ログイン処理（第1段階）
+  // ログイン処理
   const onLoginSubmit = async (values: LoginFormValues) => {
     await login(values);
   };
 
-  // 二段階認証処理
-  const onVerificationSubmit = async (values: VerificationFormValues) => {
-    if (!pendingUsername) return;
-    
-    await verifyLogin({
-      username: pendingUsername,
-      verificationCode: values.verificationCode,
-    });
-  };
-
   // ローディング状態
-  if (loginForm.formState.isSubmitting || verificationForm.formState.isSubmitting) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -95,113 +55,63 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-6">
-        {!isVerifyingLogin ? (
-          // ログインフォーム
-          <Card>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">ログイン</CardTitle>
-              <CardDescription>
-                アカウント情報を入力してください
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                  <FormField
-                    control={loginForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ユーザー名</FormLabel>
-                        <FormControl>
-                          <Input placeholder="ユーザー名を入力" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>パスワード</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="パスワードを入力" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={loginForm.formState.isSubmitting}
-                  >
-                    {loginForm.formState.isSubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    ログイン
-                  </Button>
-                </form>
-              </Form>
-              <div className="mt-4 text-center text-sm">
-                <Link href="/auth/signup">
-                  <span className="text-primary hover:underline cursor-pointer">
-                    アカウントをお持ちでない方はこちら
-                  </span>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          // 二段階認証フォーム
-          <Card>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">認証コードを入力</CardTitle>
-              <CardDescription>
-                メールで送信された6桁のコードを入力してください
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...verificationForm}>
-                <form onSubmit={verificationForm.handleSubmit(onVerificationSubmit)} className="space-y-4">
-                  <FormField
-                    control={verificationForm.control}
-                    name="verificationCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>認証コード</FormLabel>
-                        <FormControl>
-                          <Input placeholder="6桁のコードを入力" maxLength={6} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={verificationForm.formState.isSubmitting}
-                  >
-                    {verificationForm.formState.isSubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    認証する
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={resetAuthState}
-                  >
-                    戻る
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold">ログイン</CardTitle>
+            <CardDescription>
+              アカウント情報を入力してください
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...loginForm}>
+              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                <FormField
+                  control={loginForm.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ユーザー名</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ユーザー名を入力" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={loginForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>パスワード</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="パスワードを入力" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={loginForm.formState.isSubmitting}
+                >
+                  {loginForm.formState.isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  ログイン
+                </Button>
+              </form>
+            </Form>
+            <div className="mt-4 text-center text-sm">
+              <Link href="/auth/signup">
+                <span className="text-primary hover:underline cursor-pointer">
+                  アカウントをお持ちでない方はこちら
+                </span>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

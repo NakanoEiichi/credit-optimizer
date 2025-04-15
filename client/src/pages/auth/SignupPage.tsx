@@ -21,26 +21,11 @@ const signupFormSchema = z.object({
   path: ["confirmPassword"],
 });
 
-// 二段階認証のスキーマ
-const verificationSchema = z.object({
-  verificationCode: z.string().min(6, { message: "6桁の認証コードを入力してください" }).max(6),
-});
-
 type SignupFormValues = z.infer<typeof signupFormSchema>;
-type VerificationFormValues = z.infer<typeof verificationSchema>;
 
 export default function SignupPage() {
   const [, setLocation] = useLocation();
-  const { 
-    isAuthenticated, 
-    isVerifyingRegister,
-    pendingUsername,
-    pendingEmail,
-    pendingPassword,
-    sendVerification,
-    register,
-    resetAuthState
-  } = useAuth();
+  const { isAuthenticated, isLoading, register } = useAuth();
 
   // 認証済みの場合はホームページにリダイレクト
   useEffect(() => {
@@ -48,15 +33,6 @@ export default function SignupPage() {
       setLocation("/");
     }
   }, [isAuthenticated, setLocation]);
-
-  // ページを離れる際に認証状態をリセット
-  useEffect(() => {
-    return () => {
-      if (isVerifyingRegister) {
-        resetAuthState();
-      }
-    };
-  }, [isVerifyingRegister, resetAuthState]);
 
   // サインアップフォーム
   const signupForm = useForm<SignupFormValues>({
@@ -69,37 +45,17 @@ export default function SignupPage() {
     },
   });
 
-  // 認証コードフォーム
-  const verificationForm = useForm<VerificationFormValues>({
-    resolver: zodResolver(verificationSchema),
-    defaultValues: {
-      verificationCode: "",
-    },
-  });
-
-  // サインアップ処理（第1段階: 認証コード送信）
+  // サインアップ処理
   const onSignupSubmit = async (values: SignupFormValues) => {
-    await sendVerification({
+    await register({
       username: values.username,
       email: values.email,
       password: values.password,
     });
   };
 
-  // 認証コード確認処理
-  const onVerificationSubmit = async (values: VerificationFormValues) => {
-    if (!pendingUsername || !pendingEmail || !pendingPassword) return;
-    
-    await register({
-      username: pendingUsername,
-      email: pendingEmail,
-      password: pendingPassword,
-      verificationCode: values.verificationCode,
-    });
-  };
-
   // ローディング状態
-  if (signupForm.formState.isSubmitting || verificationForm.formState.isSubmitting) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -110,139 +66,89 @@ export default function SignupPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-6">
-        {!isVerifyingRegister ? (
-          // サインアップフォーム
-          <Card>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">アカウント登録</CardTitle>
-              <CardDescription>
-                必要な情報を入力してアカウントを作成してください
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...signupForm}>
-                <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
-                  <FormField
-                    control={signupForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ユーザー名</FormLabel>
-                        <FormControl>
-                          <Input placeholder="ユーザー名を入力" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={signupForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>メールアドレス</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="メールアドレスを入力" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={signupForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>パスワード</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="パスワードを入力" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={signupForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>パスワード（確認）</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="同じパスワードを再入力" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={signupForm.formState.isSubmitting}
-                  >
-                    {signupForm.formState.isSubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    登録する
-                  </Button>
-                </form>
-              </Form>
-              <div className="mt-4 text-center text-sm">
-                <Link href="/auth/login">
-                  <span className="text-primary hover:underline cursor-pointer">
-                    すでにアカウントをお持ちの方はこちら
-                  </span>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          // 認証コードフォーム
-          <Card>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">認証コードを入力</CardTitle>
-              <CardDescription>
-                メールで送信された6桁のコードを入力してください
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...verificationForm}>
-                <form onSubmit={verificationForm.handleSubmit(onVerificationSubmit)} className="space-y-4">
-                  <FormField
-                    control={verificationForm.control}
-                    name="verificationCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>認証コード</FormLabel>
-                        <FormControl>
-                          <Input placeholder="6桁のコードを入力" maxLength={6} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={verificationForm.formState.isSubmitting}
-                  >
-                    {verificationForm.formState.isSubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    認証する
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={resetAuthState}
-                  >
-                    戻る
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold">アカウント登録</CardTitle>
+            <CardDescription>
+              必要な情報を入力してアカウントを作成してください
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...signupForm}>
+              <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
+                <FormField
+                  control={signupForm.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ユーザー名</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ユーザー名を入力" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={signupForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>メールアドレス</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="メールアドレスを入力" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={signupForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>パスワード</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="パスワードを入力" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={signupForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>パスワード（確認）</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="同じパスワードを再入力" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={signupForm.formState.isSubmitting}
+                >
+                  {signupForm.formState.isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  登録する
+                </Button>
+              </form>
+            </Form>
+            <div className="mt-4 text-center text-sm">
+              <Link href="/auth/login">
+                <span className="text-primary hover:underline cursor-pointer">
+                  すでにアカウントをお持ちの方はこちら
+                </span>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
