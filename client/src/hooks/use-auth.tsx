@@ -7,7 +7,6 @@ import { useLocation } from "wouter";
 interface User {
   id: number;
   username: string;
-  email: string;
 }
 
 // ログイン・登録データの型
@@ -18,7 +17,6 @@ interface LoginCredentials {
 
 interface RegisterCredentials {
   username: string;
-  email: string;
   password: string;
 }
 
@@ -62,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   
-  // 簡易ログイン処理（メール認証なし）
+  // 簡易ログイン処理（ID/パスワードのみ）
   const login = async (credentials: LoginCredentials) => {
     try {
       setIsLoading(true);
@@ -70,8 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ユーザーIDを1、名前を入力したusernameに設定
       const mockUser: User = {
         id: 1,
-        username: credentials.username,
-        email: `${credentials.username}@example.com`
+        username: credentials.username
       };
       
       // ユーザー情報をセットしてローカルストレージに保存
@@ -98,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // 簡易登録処理（メール認証なし）
+  // 簡易登録処理（ID/パスワードのみ）
   const register = async (credentials: RegisterCredentials) => {
     try {
       setIsLoading(true);
@@ -106,8 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 登録成功とみなし、自動的にログインした状態にする
       const mockUser: User = {
         id: 1,
-        username: credentials.username,
-        email: credentials.email
+        username: credentials.username
       };
       
       // ユーザー情報をセットしてローカルストレージに保存

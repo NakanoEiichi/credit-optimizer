@@ -13,8 +13,7 @@ import { Loader2 } from "lucide-react";
 // サインアップフォームのスキーマ
 const signupFormSchema = z.object({
   username: z.string().min(3, { message: "ユーザー名は3文字以上で入力してください" }),
-  email: z.string().email({ message: "有効なメールアドレスを入力してください" }),
-  password: z.string().min(8, { message: "パスワードは8文字以上で入力してください" }),
+  password: z.string().min(4, { message: "パスワードは4文字以上で入力してください" }),
   confirmPassword: z.string().min(1, { message: "パスワード（確認）を入力してください" }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "パスワードが一致しません",
@@ -39,7 +38,6 @@ export default function SignupPage() {
     resolver: zodResolver(signupFormSchema),
     defaultValues: {
       username: "",
-      email: "",
       password: "",
       confirmPassword: "",
     },
@@ -49,7 +47,6 @@ export default function SignupPage() {
   const onSignupSubmit = async (values: SignupFormValues) => {
     await register({
       username: values.username,
-      email: values.email,
       password: values.password,
     });
   };
@@ -84,19 +81,6 @@ export default function SignupPage() {
                       <FormLabel>ユーザー名</FormLabel>
                       <FormControl>
                         <Input placeholder="ユーザー名を入力" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={signupForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>メールアドレス</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="メールアドレスを入力" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
