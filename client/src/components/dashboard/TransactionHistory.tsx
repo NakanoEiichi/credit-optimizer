@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useQuery } from "@tanstack/react-query";
 import { Transaction, CreditCard, Merchant } from "@shared/schema";
-import { format } from "date-fns";
+import { format, subDays, subWeeks, subMonths, startOfDay, endOfDay } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 
-type Period = "week" | "month" | "year";
+type Period = "week" | "month" | "3months" | "6months" | "year" | "custom";
 
 interface TransactionWithDetails extends Transaction {
   card?: CreditCard;
@@ -78,9 +82,20 @@ const TransactionItem = ({ transaction }: { transaction: TransactionWithDetails 
 
 const TransactionHistory = () => {
   const [period, setPeriod] = useState<Period>("week");
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
   
   const { data: transactions, isLoading } = useQuery<TransactionWithDetails[]>({
-    queryKey: ['/api/transactions', period],
+    queryKey: ['/api/transactions', period, startDate?.toISOString(), endDate?.toISOString()],
+    queryFn: async () => {
+      const params = new URLSearchParams({ period });
+      if (period === 'custom' && startDate && endDate) {
+        params.append('startDate', startDate.toISOString());
+        params.append('endDate', endDate.toISOString());
+      }
+      const response = await fetch(`/api/transactions?${params}`);
+      return response.json();
+    }
   });
 
   return (
@@ -88,31 +103,58 @@ const TransactionHistory = () => {
       <CardHeader className="px-4 py-5 sm:px-6">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-medium text-neutral-900">最近の利用履歴</h2>
-          <div className="inline-flex shadow-sm rounded-md">
-            <Button
-              variant={period === "week" ? "default" : "outline"}
-              size="sm"
-              className={`rounded-l-md ${period !== "week" ? "hover:text-neutral-700" : ""}`}
-              onClick={() => setPeriod("week")}
-            >
-              今週
-            </Button>
-            <Button
-              variant={period === "month" ? "default" : "outline"}
-              size="sm"
-              className={`-ml-px ${period !== "month" ? "hover:text-neutral-700" : ""}`}
-              onClick={() => setPeriod("month")}
-            >
-              今月
-            </Button>
-            <Button
-              variant={period === "year" ? "default" : "outline"}
-              size="sm"
-              className={`-ml-px rounded-r-md ${period !== "year" ? "hover:text-neutral-700" : ""}`}
-              onClick={() => setPeriod("year")}
-            >
-              今年
-            </Button>
+          <div className="flex gap-2">
+            <Select value={period} onValueChange={(value: Period) => setPeriod(value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="期間を選択" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="week">今週</SelectItem>
+                <SelectItem value="month">今月</SelectItem>
+                <SelectItem value="3months">過去3ヶ月</SelectItem>
+                <SelectItem value="6months">過去6ヶ月</SelectItem>
+                <SelectItem value="year">今年</SelectItem>
+                <SelectItem value="custom">カスタム</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {period === "custom" && (
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-24 justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "M/d") : "開始日"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-24 justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "M/d") : "終了日"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>

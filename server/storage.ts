@@ -29,7 +29,7 @@ export interface IStorage {
   createMerchant(merchant: InsertMerchant): Promise<Merchant>;
   
   // Transaction methods
-  getTransactions(userId: number, period?: string): Promise<(Transaction & { card?: CreditCard, merchant?: Merchant })[]>;
+  getTransactions(userId: number, period?: string, startDate?: string, endDate?: string): Promise<(Transaction & { card?: CreditCard, merchant?: Merchant })[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   
   // Card-Merchant Reward methods
@@ -701,7 +701,7 @@ export class DatabaseStorage implements IStorage {
     return merchant;
   }
 
-  async getTransactions(userId: number, period?: string): Promise<(Transaction & { card?: CreditCard, merchant?: Merchant })[]> {
+  async getTransactions(userId: number, period?: string, startDate?: string, endDate?: string): Promise<(Transaction & { card?: CreditCard, merchant?: Merchant })[]> {
     const userTransactions = await db.select().from(transactions).where(eq(transactions.userId, userId));
     
     const results = await Promise.all(userTransactions.map(async (transaction) => {
