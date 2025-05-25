@@ -67,6 +67,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get card templates for selection
+  app.get("/api/card-templates", async (req, res) => {
+    try {
+      const templates = await storage.getCardTemplates();
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Transaction routes
   app.get("/api/transactions", async (req, res) => {
     try {

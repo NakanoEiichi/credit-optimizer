@@ -8,7 +8,7 @@ import {
   users, creditCards, merchants, transactions, cardMerchantRewards, favoriteMerchants
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { format, addDays, subDays, parseISO } from "date-fns";
 
 // Define the storage interface with all required methods
@@ -39,6 +39,9 @@ export interface IStorage {
   // Favorite Merchant methods
   getFavoriteMerchants(userId: number): Promise<FavoriteMerchant[]>;
   toggleFavoriteMerchant(userId: number, merchantId: number): Promise<FavoriteMerchant | undefined>;
+  
+  // Card template methods
+  getCardTemplates(): Promise<any[]>;
   
   // Additional application-specific methods
   getRewardsSummary(userId: number): Promise<any>;
@@ -780,6 +783,17 @@ export class DatabaseStorage implements IStorage {
         .values({ userId, merchantId })
         .returning();
       return favorite;
+    }
+  }
+
+  async getCardTemplates(): Promise<any[]> {
+    try {
+      // SQLクエリを直接実行してカードテンプレートを取得
+      const result = await db.execute(sql`SELECT * FROM card_templates ORDER BY name`);
+      return result.rows || [];
+    } catch (error) {
+      console.error('Error fetching card templates:', error);
+      return [];
     }
   }
 
