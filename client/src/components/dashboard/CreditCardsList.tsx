@@ -225,24 +225,10 @@ const CreditCardsList = () => {
               
               <FormField
                 control={form.control}
-                name="baseRewardRate"
+                name="cardName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>基本還元率 (%)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.1" min="0" max="10" placeholder="1.0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="nickname"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ニックネーム (任意)</FormLabel>
+                    <FormLabel>カード名 (任意)</FormLabel>
                     <FormControl>
                       <Input placeholder="メインカード" {...field} />
                     </FormControl>
