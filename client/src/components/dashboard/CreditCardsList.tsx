@@ -42,11 +42,25 @@ const CreditCardItem = ({ card }: { card: CreditCard }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <div className="flex-shrink-0 h-12 w-16 bg-gray-100 rounded flex items-center justify-center">
-            <i className={`fas ${cardIcon} text-xl ${cardTextColor}`}></i>
+            {card.logoUrl ? (
+              <img 
+                src={card.logoUrl} 
+                alt={`${card.issuer || card.cardType} logo`}
+                className="w-10 h-8 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling!.style.display = 'inline';
+                }}
+              />
+            ) : null}
+            <i 
+              className={`fas ${cardIcon} text-xl ${cardTextColor}`}
+              style={{ display: card.logoUrl ? 'none' : 'inline' }}
+            ></i>
           </div>
           <div className="ml-4">
             <div className="text-sm font-medium text-neutral-900">
-              {card.cardType} **** {card.lastFour}
+              {card.nickname || `${card.issuer || card.cardType} **** ${card.lastFour}`}
             </div>
             <div className="text-xs text-neutral-500">有効期限: {card.expiryDate}</div>
           </div>
