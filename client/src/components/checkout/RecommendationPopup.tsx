@@ -66,6 +66,11 @@ const RecommendationPopup = () => {
     return "fa-credit-card text-neutral-600";
   };
 
+  // レコメンデーションデータが存在しない場合は何も表示しない
+  if (!recommendation || !recommendation.optimalCard) {
+    return null;
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-lg">
