@@ -26,8 +26,6 @@ export const creditCards = pgTable("credit_cards", {
   expiryDate: text("expiry_date").notNull(),
   baseRewardRate: doublePrecision("base_reward_rate").notNull(), // percentage as decimal
   nickname: text("nickname"),
-  issuer: text("issuer"), // カード発行者名
-  logoUrl: text("logo_url"), // 外部データベースから取得するロゴURL
 });
 
 export const insertCreditCardSchema = createInsertSchema(creditCards).pick({
@@ -37,8 +35,6 @@ export const insertCreditCardSchema = createInsertSchema(creditCards).pick({
   expiryDate: true,
   baseRewardRate: true,
   nickname: true,
-  issuer: true,
-  logoUrl: true,
 });
 
 // Merchant schema

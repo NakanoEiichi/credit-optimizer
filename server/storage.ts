@@ -4,11 +4,8 @@ import {
   Merchant, InsertMerchant,
   Transaction, InsertTransaction,
   CardMerchantReward, InsertCardMerchantReward,
-  FavoriteMerchant, InsertFavoriteMerchant,
-  users, creditCards, merchants, transactions, cardMerchantRewards, favoriteMerchants
+  FavoriteMerchant, InsertFavoriteMerchant
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, and, sql } from "drizzle-orm";
 import { format, addDays, subDays, parseISO } from "date-fns";
 
 // Define the storage interface with all required methods
@@ -29,7 +26,7 @@ export interface IStorage {
   createMerchant(merchant: InsertMerchant): Promise<Merchant>;
   
   // Transaction methods
-  getTransactions(userId: number, period?: string, startDate?: string, endDate?: string): Promise<(Transaction & { card?: CreditCard, merchant?: Merchant })[]>;
+  getTransactions(userId: number, period?: string): Promise<(Transaction & { card?: CreditCard, merchant?: Merchant })[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   
   // Card-Merchant Reward methods
@@ -39,9 +36,6 @@ export interface IStorage {
   // Favorite Merchant methods
   getFavoriteMerchants(userId: number): Promise<FavoriteMerchant[]>;
   toggleFavoriteMerchant(userId: number, merchantId: number): Promise<FavoriteMerchant | undefined>;
-  
-  // Card template methods
-  getCardTemplates(): Promise<any[]>;
   
   // Additional application-specific methods
   getRewardsSummary(userId: number): Promise<any>;
@@ -606,250 +600,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Database Storage implementation
-export class DatabaseStorage implements IStorage {
-  async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
-  }
-
-  async getCreditCards(userId: number): Promise<CreditCard[]> {
-    const cards = await db.select().from(creditCards).where(eq(creditCards.userId, userId));
-    return cards;
-  }
-
-  async getCreditCard(id: number): Promise<CreditCard | undefined> {
-    const [card] = await db.select().from(creditCards).where(eq(creditCards.id, id));
-    return card || undefined;
-  }
-
-  async createCreditCard(insertCard: InsertCreditCard): Promise<CreditCard> {
-    const [card] = await db
-      .insert(creditCards)
-      .values(insertCard)
-      .returning();
-    return card;
-  }
-
-  async getMerchants(userId?: number): Promise<(Merchant & { rewardRate: number, isFavorite: boolean })[]> {
-    const allMerchants = await db.select().from(merchants);
-    
-    const results = await Promise.all(allMerchants.map(async (merchant) => {
-      let rewardRate = 1.0; // デフォルト還元率
-      let isFavorite = false;
-
-      if (userId) {
-        // お気に入りチェック
-        const [favorite] = await db
-          .select()
-          .from(favoriteMerchants)
-          .where(and(
-            eq(favoriteMerchants.userId, userId),
-            eq(favoriteMerchants.merchantId, merchant.id)
-          ));
-        isFavorite = !!favorite;
-
-        // カード固有の還元率を取得
-        const userCards = await db.select().from(creditCards).where(eq(creditCards.userId, userId));
-        if (userCards.length > 0) {
-          const [reward] = await db
-            .select()
-            .from(cardMerchantRewards)
-            .where(and(
-              eq(cardMerchantRewards.cardId, userCards[0].id),
-              eq(cardMerchantRewards.merchantId, merchant.id)
-            ));
-          if (reward) {
-            rewardRate = reward.rewardRate;
-          }
-        }
-      }
-
-      return {
-        ...merchant,
-        rewardRate,
-        isFavorite
-      };
-    }));
-
-    return results;
-  }
-
-  async getMerchant(id: number): Promise<Merchant | undefined> {
-    const [merchant] = await db.select().from(merchants).where(eq(merchants.id, id));
-    return merchant || undefined;
-  }
-
-  async createMerchant(insertMerchant: InsertMerchant): Promise<Merchant> {
-    const [merchant] = await db
-      .insert(merchants)
-      .values(insertMerchant)
-      .returning();
-    return merchant;
-  }
-
-  async getTransactions(userId: number, period?: string, startDate?: string, endDate?: string): Promise<(Transaction & { card?: CreditCard, merchant?: Merchant })[]> {
-    const userTransactions = await db.select().from(transactions).where(eq(transactions.userId, userId));
-    
-    const results = await Promise.all(userTransactions.map(async (transaction) => {
-      let card: CreditCard | undefined;
-      let merchant: Merchant | undefined;
-
-      if (transaction.cardId) {
-        [card] = await db.select().from(creditCards).where(eq(creditCards.id, transaction.cardId));
-      }
-
-      if (transaction.merchantId) {
-        [merchant] = await db.select().from(merchants).where(eq(merchants.id, transaction.merchantId));
-      }
-
-      return {
-        ...transaction,
-        card,
-        merchant
-      };
-    }));
-
-    return results;
-  }
-
-  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const [transaction] = await db
-      .insert(transactions)
-      .values(insertTransaction)
-      .returning();
-    return transaction;
-  }
-
-  async getCardMerchantRewards(cardId?: number, merchantId?: number): Promise<CardMerchantReward[]> {
-    let query = db.select().from(cardMerchantRewards);
-    
-    if (cardId && merchantId) {
-      return await query.where(and(
-        eq(cardMerchantRewards.cardId, cardId),
-        eq(cardMerchantRewards.merchantId, merchantId)
-      ));
-    } else if (cardId) {
-      return await query.where(eq(cardMerchantRewards.cardId, cardId));
-    } else if (merchantId) {
-      return await query.where(eq(cardMerchantRewards.merchantId, merchantId));
-    }
-    
-    return await query;
-  }
-
-  async createCardMerchantReward(insertReward: InsertCardMerchantReward): Promise<CardMerchantReward> {
-    const [reward] = await db
-      .insert(cardMerchantRewards)
-      .values(insertReward)
-      .returning();
-    return reward;
-  }
-
-  async getFavoriteMerchants(userId: number): Promise<FavoriteMerchant[]> {
-    return await db.select().from(favoriteMerchants).where(eq(favoriteMerchants.userId, userId));
-  }
-
-  async toggleFavoriteMerchant(userId: number, merchantId: number): Promise<FavoriteMerchant | undefined> {
-    const [existing] = await db
-      .select()
-      .from(favoriteMerchants)
-      .where(and(
-        eq(favoriteMerchants.userId, userId),
-        eq(favoriteMerchants.merchantId, merchantId)
-      ));
-
-    if (existing) {
-      await db
-        .delete(favoriteMerchants)
-        .where(eq(favoriteMerchants.id, existing.id));
-      return undefined;
-    } else {
-      const [favorite] = await db
-        .insert(favoriteMerchants)
-        .values({ userId, merchantId })
-        .returning();
-      return favorite;
-    }
-  }
-
-  async getCardTemplates(): Promise<any[]> {
-    try {
-      // SQLクエリを直接実行してカードテンプレートを取得
-      const result = await db.execute(sql`SELECT * FROM card_templates ORDER BY name`);
-      return result.rows || [];
-    } catch (error) {
-      console.error('Error fetching card templates:', error);
-      return [];
-    }
-  }
-
-  // アプリ固有のメソッドはサンプルデータを返す
-  async getRewardsSummary(userId: number): Promise<any> {
-    return {
-      companyPoints: 2580,
-      companyPointsPercent: 12,
-      cardPoints: 1240,
-      cardPointsPercent: -5,
-      totalSavings: 3820,
-      totalSavingsPercent: 8
-    };
-  }
-
-  async getRecommendedCard(userId: number): Promise<any> {
-    return {
-      id: 999,
-      name: "楽天カード",
-      features: [
-        { name: "年会費永年無料" },
-        { name: "楽天市場でポイント3倍" },
-        { name: "街での利用で1%還元" }
-      ],
-      baseRewardRate: "1.0%",
-      annualFee: "永年無料",
-      brands: "Visa・Mastercard・JCB・American Express",
-      benefits: [
-        { description: "楽天ポイントが貯まる・使える" },
-        { description: "楽天市場でお得にお買い物" },
-        { description: "豊富なポイントアップキャンペーン" }
-      ],
-      cardType: "一般カード"
-    };
-  }
-
-  async getWalletBalance(userId: number): Promise<any> {
-    return {
-      availableBalance: 15750,
-      pendingBalance: 2340,
-      transactions: []
-    };
-  }
-
-  async getWalletTransactions(userId: number, rewardType: string = 'company'): Promise<any> {
-    return [];
-  }
-
-  async getRecommendation(userId: number, merchantName: string): Promise<any> {
-    return {
-      isOpen: false,
-      merchantName,
-      optimalCard: null,
-      otherCards: []
-    };
-  }
-}
-
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();

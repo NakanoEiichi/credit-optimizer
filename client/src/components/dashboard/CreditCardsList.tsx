@@ -14,10 +14,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { CreditCard } from "@shared/schema";
 
 const formSchema = z.object({
-  cardTemplateId: z.string().min(1, { message: "カードを選択してください" }),
+  cardType: z.string().min(1, { message: "カードタイプは必須です" }),
   lastFour: z.string().length(4, { message: "カード番号下4桁は4文字である必要があります" }).regex(/^\d{4}$/, { message: "数字のみを入力してください" }),
   expiryDate: z.string().regex(/^(0[1-9]|1[0-2])\/([0-9]{2})$/, { message: "有効期限はMM/YY形式で入力してください" }),
-  cardName: z.string().optional(),
+  baseRewardRate: z.string().min(1, { message: "基本還元率は必須です" }).transform(val => parseFloat(val)),
+  nickname: z.string().optional(),
 });
 
 const CreditCardItem = ({ card }: { card: CreditCard }) => {
@@ -41,25 +42,11 @@ const CreditCardItem = ({ card }: { card: CreditCard }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <div className="flex-shrink-0 h-12 w-16 bg-gray-100 rounded flex items-center justify-center">
-            {card.logoUrl ? (
-              <img 
-                src={card.logoUrl} 
-                alt={`${card.issuer || card.cardType} logo`}
-                className="w-10 h-8 object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling!.style.display = 'inline';
-                }}
-              />
-            ) : null}
-            <i 
-              className={`fas ${cardIcon} text-xl ${cardTextColor}`}
-              style={{ display: card.logoUrl ? 'none' : 'inline' }}
-            ></i>
+            <i className={`fas ${cardIcon} text-xl ${cardTextColor}`}></i>
           </div>
           <div className="ml-4">
             <div className="text-sm font-medium text-neutral-900">
-              {card.nickname || `${card.issuer || card.cardType} **** ${card.lastFour}`}
+              {card.cardType} **** {card.lastFour}
             </div>
             <div className="text-xs text-neutral-500">有効期限: {card.expiryDate}</div>
           </div>
@@ -77,17 +64,14 @@ const CreditCardsList = () => {
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
   const { toast } = useToast();
   
-  const { data: cardTemplates = [], isLoading: isLoadingTemplates } = useQuery({
-    queryKey: ["/api/card-templates"],
-  });
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      cardTemplateId: "",
+      cardType: "",
       lastFour: "",
       expiryDate: "",
-      cardName: "",
+      baseRewardRate: "",
+      nickname: "",
     },
   });
 
@@ -96,18 +80,11 @@ const CreditCardsList = () => {
   });
 
   const addCardMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const selectedTemplate = cardTemplates.find((t: any) => t.id === parseInt(data.cardTemplateId));
-      const response = await apiRequest("POST", "/api/credit-cards", {
-        cardType: selectedTemplate?.card_type || "VISA",
-        lastFour: data.lastFour,
-        expiryDate: data.expiryDate,
-        baseRewardRate: selectedTemplate?.base_reward_rate || 1,
-        nickname: data.cardName || null,
-        issuer: selectedTemplate?.issuer || null,
-        logoUrl: selectedTemplate?.logo_url || null,
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      return apiRequest("POST", "/api/credit-cards", {
+        ...values,
+        baseRewardRate: parseFloat(values.baseRewardRate as unknown as string)
       });
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/credit-cards'] });
@@ -172,22 +149,21 @@ const CreditCardsList = () => {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="cardTemplateId"
+                name="cardType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>カード名</FormLabel>
+                    <FormLabel>カードタイプ</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="カードを選択してください" />
+                          <SelectValue placeholder="カードタイプを選択" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {cardTemplates.map((template: any) => (
-                          <SelectItem key={template.id} value={template.id.toString()}>
-                            {template.name} ({template.card_type})
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="VISA">VISA</SelectItem>
+                        <SelectItem value="MasterCard">MasterCard</SelectItem>
+                        <SelectItem value="Amex">American Express</SelectItem>
+                        <SelectItem value="JCB">JCB</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -225,10 +201,24 @@ const CreditCardsList = () => {
               
               <FormField
                 control={form.control}
-                name="cardName"
+                name="baseRewardRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>カード名 (任意)</FormLabel>
+                    <FormLabel>基本還元率 (%)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.1" min="0" max="10" placeholder="1.0" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="nickname"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ニックネーム (任意)</FormLabel>
                     <FormControl>
                       <Input placeholder="メインカード" {...field} />
                     </FormControl>
