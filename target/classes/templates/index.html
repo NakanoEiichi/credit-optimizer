@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クレジットカード最適化アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Navigation -->
+        <nav class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <i class="fas fa-credit-card text-blue-600 text-2xl mr-3"></i>
+                        <h1 class="text-xl font-bold text-gray-900">クレジットカード最適化</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="/" class="text-blue-600 font-medium">ホーム</a>
+                        <a href="/cards" class="text-gray-600 hover:text-gray-900">カード管理</a>
+                        <a href="/transactions" class="text-gray-600 hover:text-gray-900">取引履歴</a>
+                        <a href="/wallet" class="text-gray-600 hover:text-gray-900">ウォレット</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Rewards Summary -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <i class="fas fa-coins text-blue-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">会社ポイント</p>
+                            <p class="text-2xl font-bold text-gray-900" id="companyPoints">2,580</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <i class="fas fa-star text-green-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">カードポイント</p>
+                            <p class="text-2xl font-bold text-gray-900" id="cardPoints">1,240</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="bg-purple-100 p-3 rounded-full">
+                            <i class="fas fa-chart-line text-purple-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">今月の節約</p>
+                            <p class="text-2xl font-bold text-gray-900">¥1,250</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Credit Cards List -->
+            <div class="bg-white rounded-lg shadow mb-8">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">登録済みクレジットカード</h3>
+                </div>
+                <div class="p-6">
+                    <div id="creditCardsList" class="space-y-4">
+                        <!-- Credit cards will be loaded here -->
+                    </div>
+                    <button class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>新しいカードを追加
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">最近の取引履歴</h3>
+                </div>
+                <div class="p-6">
+                    <div id="transactionsList" class="space-y-4">
+                        <!-- Transactions will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Load credit cards
+        async function loadCreditCards() {
+            try {
+                const response = await fetch('/api/credit-cards');
+                const cards = await response.json();
+                const container = document.getElementById('creditCardsList');
+                
+                container.innerHTML = cards.map(card => `
+                    <div class="flex items-center justify-between p-4 border rounded-lg">
+                        <div class="flex items-center">
+                            <div class="bg-gray-200 w-12 h-8 rounded mr-4 flex items-center justify-center">
+                                <i class="fas fa-credit-card text-gray-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium">${card.nickname || card.cardType}</p>
+                                <p class="text-sm text-gray-600">**** **** **** ${card.lastFour}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600">基本還元率</p>
+                            <p class="font-medium">${card.baseRewardRate}%</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading credit cards:', error);
+            }
+        }
+
+        // Load page data when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCreditCards();
+        });
+    </script>
+</body>
+</html>
