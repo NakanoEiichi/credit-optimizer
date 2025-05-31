@@ -67,13 +67,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get card templates for selection
+  app.get("/api/card-templates", async (req, res) => {
+    try {
+      const templates = await storage.getCardTemplates();
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Transaction routes
   app.get("/api/transactions", async (req, res) => {
     try {
       // For demo, we'll use a default user ID
       const userId = 1;
       const period = req.query.period as string || 'week';
-      const transactions = await storage.getTransactions(userId, period);
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+      const transactions = await storage.getTransactions(userId, period, startDate, endDate);
       res.json(transactions);
     } catch (error) {
       res.status(500).json({ error: "Failed to retrieve transactions" });

@@ -31,7 +31,7 @@ const RewardSummaryItem = ({
             <dl>
               <dt className="text-sm font-medium text-neutral-500 truncate">{title}</dt>
               <dd className="flex items-baseline">
-                <div className="text-2xl font-semibold text-neutral-900">{amount.toLocaleString()}</div>
+                <div className="text-2xl font-semibold text-neutral-900">{(amount || 0).toLocaleString()}</div>
                 {percentChange && (
                   <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
                     <i className="fas fa-arrow-up mr-0.5"></i>
