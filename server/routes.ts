@@ -177,11 +177,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const url = req.query.url as string || '';
       
       // Extract merchant from URL (in a real implementation this would be more sophisticated)
-      const merchantName = url.includes('amazon') ? 'Amazon' : 'Unknown Merchant';
+      let merchantName = 'Amazon'; // Default to Amazon for demo
+      if (url.includes('rakuten') || url.includes('楽天')) {
+        merchantName = '楽天';
+      } else if (url.includes('eneos')) {
+        merchantName = 'ENEOS';
+      } else if (url.includes('7-eleven') || url.includes('seven')) {
+        merchantName = 'セブンイレブン';
+      } else if (url.includes('apple')) {
+        merchantName = 'Apple';
+      }
       
       const recommendation = await storage.getRecommendation(userId, merchantName);
       res.json(recommendation);
     } catch (error) {
+      console.error('Recommendation error:', error);
       res.status(500).json({ error: "Failed to get recommendation" });
     }
   });
