@@ -38,17 +38,15 @@ export const insertCreditCardSchema = createInsertSchema(creditCards).pick({
 });
 
 // Merchant schema
-export const merchants = pgTable("merchants", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  category: text("category"),
-  logoUrl: text("logo_url"),
+export const merchants = mysqlTable("merchants", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  category: varchar("category", { length: 50 }),
+  logoUrl: varchar("logo_url", { length: 255 }),
 });
 
-export const insertMerchantSchema = createInsertSchema(merchants).pick({
-  name: true,
-  category: true,
-  logoUrl: true,
+export const insertMerchantSchema = createInsertSchema(merchants).omit({
+  id: true,
 });
 
 // Card-merchant reward rate mapping
@@ -79,16 +77,8 @@ export const transactions = pgTable("transactions", {
   isOptimal: boolean("is_optimal").default(false),
 });
 
-export const insertTransactionSchema = createInsertSchema(transactions).pick({
-  userId: true,
-  cardId: true,
-  merchantId: true,
-  amount: true,
-  date: true,
-  rewardPoints: true,
-  cardRewardPoints: true,
-  companyRewardPoints: true,
-  isOptimal: true,
+export const insertTransactionSchema = createInsertSchema(transactions).omit({
+  id: true,
 });
 
 // Favorite merchants
@@ -98,9 +88,8 @@ export const favoriteMerchants = pgTable("favorite_merchants", {
   merchantId: integer("merchant_id").notNull().references(() => merchants.id),
 });
 
-export const insertFavoriteMerchantSchema = createInsertSchema(favoriteMerchants).pick({
-  userId: true,
-  merchantId: true,
+export const insertFavoriteMerchantSchema = createInsertSchema(favoriteMerchants).omit({
+  id: true,
 });
 
 // Define types
