@@ -121,7 +121,8 @@ export class MemStorage implements IStorage {
     creditCards.forEach(card => {
       const newCard: CreditCard = {
         ...card,
-        id: this.cardCounter++
+        id: this.cardCounter++,
+        nickname: card.nickname || null
       };
       this.creditCards.set(newCard.id, newCard);
     });
@@ -139,7 +140,9 @@ export class MemStorage implements IStorage {
     merchants.forEach(merchant => {
       const newMerchant: Merchant = {
         ...merchant,
-        id: this.merchantCounter++
+        id: this.merchantCounter++,
+        category: merchant.category || null,
+        logoUrl: merchant.logoUrl || null
       };
       this.merchants.set(newMerchant.id, newMerchant);
     });
@@ -201,7 +204,14 @@ export class MemStorage implements IStorage {
     transactions.forEach(transaction => {
       const newTransaction: Transaction = {
         ...transaction,
-        id: this.transactionCounter++
+        id: this.transactionCounter++,
+        date: transaction.date || new Date(),
+        cardId: transaction.cardId || null,
+        merchantId: transaction.merchantId || null,
+        rewardPoints: transaction.rewardPoints || null,
+        cardRewardPoints: transaction.cardRewardPoints || null,
+        companyRewardPoints: transaction.companyRewardPoints || null,
+        isOptimal: transaction.isOptimal || null
       };
       this.transactions.set(newTransaction.id, newTransaction);
     });
@@ -256,7 +266,11 @@ export class MemStorage implements IStorage {
 
   async createCreditCard(insertCard: InsertCreditCard): Promise<CreditCard> {
     const id = this.cardCounter++;
-    const card: CreditCard = { ...insertCard, id };
+    const card: CreditCard = { 
+      ...insertCard, 
+      id,
+      nickname: insertCard.nickname || null
+    };
     this.creditCards.set(id, card);
     return card;
   }
@@ -295,7 +309,12 @@ export class MemStorage implements IStorage {
 
   async createMerchant(insertMerchant: InsertMerchant): Promise<Merchant> {
     const id = this.merchantCounter++;
-    const merchant: Merchant = { ...insertMerchant, id };
+    const merchant: Merchant = { 
+      ...insertMerchant, 
+      id,
+      category: insertMerchant.category || null,
+      logoUrl: insertMerchant.logoUrl || null
+    };
     this.merchants.set(id, merchant);
     return merchant;
   }
@@ -347,7 +366,17 @@ export class MemStorage implements IStorage {
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = this.transactionCounter++;
-    const transaction: Transaction = { ...insertTransaction, id };
+    const transaction: Transaction = { 
+      ...insertTransaction, 
+      id,
+      date: insertTransaction.date || new Date(),
+      cardId: insertTransaction.cardId || null,
+      merchantId: insertTransaction.merchantId || null,
+      rewardPoints: insertTransaction.rewardPoints || null,
+      cardRewardPoints: insertTransaction.cardRewardPoints || null,
+      companyRewardPoints: insertTransaction.companyRewardPoints || null,
+      isOptimal: insertTransaction.isOptimal || null
+    };
     this.transactions.set(id, transaction);
     return transaction;
   }
