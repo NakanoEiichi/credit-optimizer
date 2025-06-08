@@ -4,17 +4,9 @@ import {
   Merchant, InsertMerchant,
   Transaction, InsertTransaction,
   CardMerchantReward, InsertCardMerchantReward,
-  FavoriteMerchant, InsertFavoriteMerchant,
-  users as usersTable,
-  creditCards as creditCardsTable,
-  merchants as merchantsTable,
-  transactions as transactionsTable,
-  cardMerchantRewards as cardMerchantRewardsTable,
-  favoriteMerchants as favoriteMerchantsTable
+  FavoriteMerchant, InsertFavoriteMerchant
 } from "@shared/schema";
 import { format, addDays, subDays, parseISO } from "date-fns";
-import { eq } from "drizzle-orm";
-import { db } from "./db";
 
 // Define the storage interface with all required methods
 export interface IStorage {
@@ -53,42 +45,7 @@ export interface IStorage {
   getRecommendation(userId: number, merchantName: string): Promise<any>;
 }
 
-// Database storage implementation using MySQL
-export class DatabaseStorage implements IStorage {
-  // User methods
-  async getUser(id: number): Promise<User | undefined> {
-    try {
-      const users = await db.select().from(usersTable).where(eq(usersTable.id, id));
-      return users[0];
-    } catch (error) {
-      console.error("Database connection error, falling back to memory storage");
-      return this.memStorage.getUser(id);
-    }
-  }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    try {
-      const users = await db.select().from(usersTable).where(eq(usersTable.username, username));
-      return users[0];
-    } catch (error) {
-      console.error("Database connection error, falling back to memory storage");
-      return this.memStorage.getUserByUsername(username);
-    }
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    try {
-      const users = await db.insert(usersTable).values(insertUser).returning();
-      return users[0];
-    } catch (error) {
-      console.error("Database connection error, falling back to memory storage");
-      return this.memStorage.createUser(insertUser);
-    }
-  }
-
-  // Fallback memory storage for when database is unavailable
-  private memStorage = new MemStorage();
-}
 
 // In-memory storage implementation (fallback)
 export class MemStorage implements IStorage {
@@ -674,4 +631,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();
