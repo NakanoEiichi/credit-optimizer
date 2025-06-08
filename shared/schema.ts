@@ -25,7 +25,7 @@ export const creditCards = mysqlTable("credit_cards", {
   lastFour: varchar("last_four", { length: 4 }).notNull(),
   expiryDate: varchar("expiry_date", { length: 7 }).notNull(),
   baseRewardRate: double("base_reward_rate").notNull(), // percentage as decimal
-  nickname: varchar("nickname", { length: 100 }),
+  nickname: varchar("nickname", { length: 100 }).default(null),
 });
 
 export const insertCreditCardSchema = createInsertSchema(creditCards).pick({
@@ -41,8 +41,8 @@ export const insertCreditCardSchema = createInsertSchema(creditCards).pick({
 export const merchants = mysqlTable("merchants", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
-  category: varchar("category", { length: 50 }),
-  logoUrl: varchar("logo_url", { length: 255 }),
+  category: varchar("category", { length: 50 }).default(null),
+  logoUrl: varchar("logo_url", { length: 255 }).default(null),
 });
 
 export const insertMerchantSchema = createInsertSchema(merchants).omit({
@@ -67,13 +67,13 @@ export const insertCardMerchantRewardSchema = createInsertSchema(cardMerchantRew
 export const transactions = mysqlTable("transactions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("user_id").notNull().references(() => users.id),
-  cardId: int("card_id").references(() => creditCards.id),
-  merchantId: int("merchant_id").references(() => merchants.id),
+  cardId: int("card_id").references(() => creditCards.id).default(null),
+  merchantId: int("merchant_id").references(() => merchants.id).default(null),
   amount: double("amount").notNull(),
   date: timestamp("date").defaultNow().notNull(),
-  rewardPoints: double("reward_points"),
-  cardRewardPoints: double("card_reward_points"),
-  companyRewardPoints: double("company_reward_points"),
+  rewardPoints: double("reward_points").default(null),
+  cardRewardPoints: double("card_reward_points").default(null),
+  companyRewardPoints: double("company_reward_points").default(null),
   isOptimal: boolean("is_optimal").default(false),
 });
 

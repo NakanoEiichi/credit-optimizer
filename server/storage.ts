@@ -7,6 +7,7 @@ import {
   FavoriteMerchant, InsertFavoriteMerchant
 } from "@shared/schema";
 import { format, addDays, subDays, parseISO } from "date-fns";
+// MySQL database will be configured when needed
 
 // Define the storage interface with all required methods
 export interface IStorage {
