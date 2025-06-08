@@ -1,13 +1,13 @@
-import { pgTable, text, serial, integer, boolean, varchar, timestamp, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
+import { mysqlTable, text, int, boolean, varchar, timestamp, decimal, double } from "drizzle-orm/mysql-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // User schema
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  email: text("email").notNull().unique(),
+export const users = mysqlTable("users", {
+  id: int("id").autoincrement().primaryKey(),
+  username: varchar("username", { length: 50 }).notNull().unique(),
+  password: varchar("password", { length: 255 }).notNull(),
+  email: varchar("email", { length: 100 }).notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -18,14 +18,14 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 // Credit card schema
-export const creditCards = pgTable("credit_cards", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  cardType: text("card_type").notNull(), // visa, mastercard, amex, etc.
-  lastFour: text("last_four").notNull(),
-  expiryDate: text("expiry_date").notNull(),
-  baseRewardRate: doublePrecision("base_reward_rate").notNull(), // percentage as decimal
-  nickname: text("nickname"),
+export const creditCards = mysqlTable("credit_cards", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().references(() => users.id),
+  cardType: varchar("card_type", { length: 50 }).notNull(), // visa, mastercard, amex, etc.
+  lastFour: varchar("last_four", { length: 4 }).notNull(),
+  expiryDate: varchar("expiry_date", { length: 7 }).notNull(),
+  baseRewardRate: double("base_reward_rate").notNull(), // percentage as decimal
+  nickname: varchar("nickname", { length: 100 }),
 });
 
 export const insertCreditCardSchema = createInsertSchema(creditCards).pick({
@@ -50,11 +50,11 @@ export const insertMerchantSchema = createInsertSchema(merchants).omit({
 });
 
 // Card-merchant reward rate mapping
-export const cardMerchantRewards = pgTable("card_merchant_rewards", {
-  id: serial("id").primaryKey(),
-  cardId: integer("card_id").notNull().references(() => creditCards.id),
-  merchantId: integer("merchant_id").notNull().references(() => merchants.id),
-  rewardRate: doublePrecision("reward_rate").notNull(), // percentage as decimal
+export const cardMerchantRewards = mysqlTable("card_merchant_rewards", {
+  id: int("id").autoincrement().primaryKey(),
+  cardId: int("card_id").notNull().references(() => creditCards.id),
+  merchantId: int("merchant_id").notNull().references(() => merchants.id),
+  rewardRate: double("reward_rate").notNull(), // percentage as decimal
 });
 
 export const insertCardMerchantRewardSchema = createInsertSchema(cardMerchantRewards).pick({
@@ -64,16 +64,16 @@ export const insertCardMerchantRewardSchema = createInsertSchema(cardMerchantRew
 });
 
 // Transaction schema
-export const transactions = pgTable("transactions", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  cardId: integer("card_id").references(() => creditCards.id),
-  merchantId: integer("merchant_id").references(() => merchants.id),
-  amount: doublePrecision("amount").notNull(),
+export const transactions = mysqlTable("transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().references(() => users.id),
+  cardId: int("card_id").references(() => creditCards.id),
+  merchantId: int("merchant_id").references(() => merchants.id),
+  amount: double("amount").notNull(),
   date: timestamp("date").defaultNow().notNull(),
-  rewardPoints: doublePrecision("reward_points"),
-  cardRewardPoints: doublePrecision("card_reward_points"),
-  companyRewardPoints: doublePrecision("company_reward_points"),
+  rewardPoints: double("reward_points"),
+  cardRewardPoints: double("card_reward_points"),
+  companyRewardPoints: double("company_reward_points"),
   isOptimal: boolean("is_optimal").default(false),
 });
 
@@ -82,10 +82,10 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
 });
 
 // Favorite merchants
-export const favoriteMerchants = pgTable("favorite_merchants", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  merchantId: integer("merchant_id").notNull().references(() => merchants.id),
+export const favoriteMerchants = mysqlTable("favorite_merchants", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().references(() => users.id),
+  merchantId: int("merchant_id").notNull().references(() => merchants.id),
 });
 
 export const insertFavoriteMerchantSchema = createInsertSchema(favoriteMerchants).omit({
