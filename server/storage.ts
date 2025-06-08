@@ -170,7 +170,7 @@ export class MemStorage implements IStorage {
         date: subDays(now, 2),
         rewardPoints: 128,
         cardRewardPoints: 128,
-        companyRewardPoints: 0,
+        companyRewardPoints: 100,
         isOptimal: false
       },
       {
@@ -181,7 +181,7 @@ export class MemStorage implements IStorage {
         date: subDays(now, 3),
         rewardPoints: 20,
         cardRewardPoints: 20,
-        companyRewardPoints: 0,
+        companyRewardPoints: 100,
         isOptimal: true
       },
       {
@@ -192,7 +192,7 @@ export class MemStorage implements IStorage {
         date: subDays(now, 4),
         rewardPoints: 45,
         cardRewardPoints: 45,
-        companyRewardPoints: 0,
+        companyRewardPoints: 100,
         isOptimal: false
       }
     ];
