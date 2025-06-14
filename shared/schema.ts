@@ -1,4 +1,4 @@
-import { mysqlTable, text, int, boolean, varchar, timestamp, decimal, double } from "drizzle-orm/mysql-core";
+import { mysqlTable, text, int, boolean, varchar, timestamp, decimal, double, date } from "drizzle-orm/mysql-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -8,7 +8,14 @@ export const users = mysqlTable("users", {
   username: varchar("username", { length: 50 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
   email: varchar("email", { length: 100 }).notNull().unique(),
+  phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
+  dateOfBirth: date("date_of_birth").notNull(),
+  occupation: varchar("occupation", { length: 100 }),
+  prefecture: varchar("prefecture", { length: 50 }),
+  annualIncome: int("annual_income"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
